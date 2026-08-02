@@ -1,6 +1,4 @@
-// Library UI - DOM Manipulation with Complex Errors
-
-// Missing: proper initialization with DOMContentLoaded
+// Library UI - DOM Manipulation and asset rendering
 let catalogueContainer;
 let searchInput;
 let filterDropdown;
@@ -10,23 +8,30 @@ let memberFormContainer;
 let memberListContainer;
 let messageBox;
 let addBookFormContainer;
-let addBookForm;
 
 const BOOK_COVER_IMAGES = [
-    'covers/Screenshot 2026-07-13 093445.png',
-    'covers/Screenshot 2026-07-13 0936102.png',
-    'covers/Screenshot 2026-07-13 0941503.png',
-    'covers/Screenshot 2026-07-13 0943123.png',
-    'covers/Screenshot_13-7-2026_93918_.jpeg',
-    'covers/Screenshot_13-7-2026_94354_.jpeg'
+    'covers/Screenshot 2026-07-13 101032.png',
+    'covers/Screenshot 2026-07-13 101159.png',
+    'covers/Screenshot 2026-07-13 101327.png',
+    'covers/Screenshot 2026-07-13 101444.png'
 ];
 
+globalThis.BOOK_COVER_IMAGES = BOOK_COVER_IMAGES;
+
 function getBookCoverImage(book, index) {
-    const imageName = BOOK_COVER_IMAGES[index % BOOK_COVER_IMAGES.length];
-    return `./${encodeURI(imageName)}`;
+    const coverList = Array.isArray(globalThis.BOOK_COVER_IMAGES) && globalThis.BOOK_COVER_IMAGES.length
+        ? globalThis.BOOK_COVER_IMAGES
+        : BOOK_COVER_IMAGES;
+    const safeIndex = Number.isInteger(index) ? index : 0;
+    const imageName = coverList[safeIndex % coverList.length];
+    return imageName.startsWith('.') ? imageName : `./${imageName}`;
 }
 
 function initializeUI() {
+    if (typeof document === 'undefined') {
+        return;
+    }
+
     catalogueContainer = document.querySelector('#catalogue-list');
     searchInput = document.getElementById('search');
     filterDropdown = document.getElementById('filter-category');
@@ -41,12 +46,12 @@ function initializeUI() {
         return;
     }
 
-    if (typeof window.LibraryApp !== 'undefined') {
+    if (typeof window !== 'undefined' && window.LibraryApp) {
         window.LibraryApp.initializeLibrary();
     }
 
     setupEventListeners();
-    renderBookCatalogue(window.LibraryApp.getAllBooks());
+    renderBookCatalogue(window.LibraryApp?.getAllBooks?.() ?? []);
     updateStatisticsDisplay();
     createMemberForm();
     createBookForm();
@@ -54,14 +59,18 @@ function initializeUI() {
 }
 
 function setupEventListeners() {
-    // Missing: search input event listener
-    searchInput.addEventListener('input', handleSearch);
-    // Wrong event type
-    filterDropdown.addEventListener('change', handleFilterChange);
-    // Missing: form submission prevention
-    borrowForm.addEventListener('submit', handleBorrowSubmit);
-    // Missing: event delegation for dynamic elements
-    catalogueContainer.addEventListener('click', handleBookClick);
+    if (searchInput && typeof handleSearch === 'function') {
+        searchInput.addEventListener('input', handleSearch);
+    }
+    if (filterDropdown && typeof handleFilterChange === 'function') {
+        filterDropdown.addEventListener('change', handleFilterChange);
+    }
+    if (borrowForm && typeof handleBorrowSubmit === 'function') {
+        borrowForm.addEventListener('submit', handleBorrowSubmit);
+    }
+    if (catalogueContainer && typeof handleBookClick === 'function') {
+        catalogueContainer.addEventListener('click', handleBookClick);
+    }
 
     const tabs = [
         document.getElementById('catalogue-tab'),
@@ -70,22 +79,20 @@ function setupEventListeners() {
     ];
 
     tabs.forEach((tab) => {
-        if (tab) {
-            tab.addEventListener('click', () => {
-                const sectionId = tab.id.replace('-tab', '-section');
-                document.querySelectorAll('main section').forEach((section) => {
-                    if (section.id === 'borrow-section') {
-                        section.style.display = 'block';
-                    } else {
-                        section.style.display = section.id === sectionId ? 'block' : 'none';
-                    }
-                });
-            });
+        if (!tab) {
+            return;
         }
+
+        tab.addEventListener('click', () => {
+            const sectionId = tab.id.replace('-tab', '-section');
+            document.querySelectorAll('main section').forEach((section) => {
+                const isBorrowSection = section.id === 'borrow-section';
+                section.style.display = isBorrowSection || section.id === sectionId ? 'block' : 'none';
+            });
+        });
     });
 }
 
-// Complex DOM rendering with errors
 function renderBookCatalogue(bookList) {
     if (!catalogueContainer) {
         return;
@@ -105,19 +112,25 @@ function renderBookCatalogue(bookList) {
     }
 
     safeList.forEach((book, index) => {
+        const title = typeof book?.title === 'string' ? book.title : 'Untitled';
+        const author = typeof book?.author === 'string' ? book.author : 'Unknown author';
+        const category = typeof book?.category === 'string' ? book.category : 'general';
+        const availableCopies = Number.isFinite(book?.availableCopies) ? book.availableCopies : 0;
+        const isbn = typeof book?.isbn === 'string' ? book.isbn : '';
+
         const bookCard = document.createElement('article');
         bookCard.className = 'book-card';
-        bookCard.dataset.bookId = book.isbn;
+        bookCard.dataset.bookId = isbn;
         bookCard.innerHTML = `
             <div class="book-cover">
-                <img src="${getBookCoverImage(book, index)}" alt="${book.title} cover">
+                <img src="${getBookCoverImage(book, index)}" alt="${title} cover">
             </div>
             <div class="book-info">
-                <h3>${book.title}</h3>
-                <span class="badge">${book.category}</span>
-                <p class="book-meta">Author: ${book.author}</p>
-                <p class="book-meta">Available: ${book.availableCopies}</p>
-                <p class="book-meta">ISBN: ${book.isbn}</p>
+                <h3>${title}</h3>
+                <span class="badge">${category}</span>
+                <p class="book-meta">Author: ${author}</p>
+                <p class="book-meta">Available: ${availableCopies}</p>
+                <p class="book-meta">ISBN: ${isbn}</p>
             </div>
         `;
         fragment.appendChild(bookCard);
@@ -126,7 +139,6 @@ function renderBookCatalogue(bookList) {
     catalogueContainer.appendChild(fragment);
 }
 
-// Function with event handling errors
 function handleBorrowSubmit(event) {
     event.preventDefault();
 
@@ -140,10 +152,11 @@ function handleBorrowSubmit(event) {
         return;
     }
 
-    const success = window.LibraryApp.borrowBook(memberId, isbn);
+    const success = window.LibraryApp?.borrowBook?.(memberId, isbn) ?? false;
+
     if (success) {
         showMessage('Book borrowed successfully.', 'success');
-        borrowForm.reset();
+        borrowForm?.reset?.();
         renderBookCatalogue(window.LibraryApp.getAllBooks());
         updateStatisticsDisplay();
         displayBookDetails(isbn);
@@ -152,24 +165,22 @@ function handleBorrowSubmit(event) {
     }
 }
 
-// Function missing event delegation
 function handleBookClick(event) {
-    const card = event.target.closest('.book-card');
+    const card = event.target?.closest?.('.book-card');
     if (!card) {
         return;
     }
 
-    const bookId = card.dataset.bookId;
+    const bookId = card.dataset.bookId ?? '';
     displayBookDetails(bookId);
 }
 
-// Search function with errors
 function handleSearch(event) {
-    const searchTerm = event.target.value.trim().toLowerCase();
+    const searchTerm = event.target?.value?.trim()?.toLowerCase() ?? '';
     const selectedCategory = filterDropdown ? filterDropdown.value : 'all';
-    const results = window.LibraryApp.getAllBooks().filter((book) => {
-        const titleMatch = book.title.toLowerCase().includes(searchTerm);
-        const authorMatch = book.author.toLowerCase().includes(searchTerm);
+    const results = (window.LibraryApp?.getAllBooks?.() ?? []).filter((book) => {
+        const titleMatch = book.title?.toLowerCase().includes(searchTerm);
+        const authorMatch = book.author?.toLowerCase().includes(searchTerm);
         const categoryMatch = selectedCategory === 'all' || book.category === selectedCategory;
         return (titleMatch || authorMatch) && categoryMatch;
     });
@@ -177,11 +188,10 @@ function handleSearch(event) {
     renderBookCatalogue(results);
 }
 
-// Function with filter errors
 function handleFilterChange() {
     const selectedCategory = filterDropdown ? filterDropdown.value : 'all';
     const activeTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
-    const filtered = window.LibraryApp.getAllBooks().filter((book) => {
+    const filtered = (window.LibraryApp?.getAllBooks?.() ?? []).filter((book) => {
         const categoryMatch = selectedCategory === 'all' || book.category === selectedCategory;
         const textMatch = !activeTerm || book.title.toLowerCase().includes(activeTerm) || book.author.toLowerCase().includes(activeTerm);
         return categoryMatch && textMatch;
@@ -190,12 +200,11 @@ function handleFilterChange() {
     renderBookCatalogue(filtered);
 }
 
-// Function missing JSON operations
 function exportLibraryData() {
     try {
         const data = {
-            books: window.LibraryApp.getAllBooks(),
-            members: window.LibraryApp.members
+            books: window.LibraryApp?.getAllBooks?.() ?? [],
+            members: window.LibraryApp?.members ?? []
         };
         return JSON.stringify(data);
     } catch (error) {
@@ -204,29 +213,27 @@ function exportLibraryData() {
     }
 }
 
-// Function missing JSON parsing
 function importLibraryData(jsonString) {
     try {
-        const parsed = JSON.parse(jsonString);
+        const parsed = JSON.parse(jsonString ?? '{}');
         if (!parsed || !Array.isArray(parsed.books) || !Array.isArray(parsed.members)) {
             throw new Error('Invalid library data.');
         }
-        window.LibraryApp.resetLibraryState();
-        window.LibraryApp.books.push(...parsed.books);
-        window.LibraryApp.members.push(...parsed.members);
-        window.LibraryApp.LibraryStats.updateStats();
-        renderBookCatalogue(window.LibraryApp.getAllBooks());
+        window.LibraryApp?.resetLibraryState?.();
+        window.LibraryApp?.books?.push(...parsed.books);
+        window.LibraryApp?.members?.push(...parsed.members);
+        window.LibraryApp?.LibraryStats?.updateStats?.();
+        renderBookCatalogue(window.LibraryApp?.getAllBooks?.() ?? []);
         updateStatisticsDisplay();
     } catch (error) {
         console.error(error.message);
     }
 }
 
-// LocalStorage functions with errors
 function saveToLocalStorage() {
     try {
-        localStorage.setItem('libraryBooks', JSON.stringify(window.LibraryApp.getAllBooks()));
-        localStorage.setItem('libraryMembers', JSON.stringify(window.LibraryApp.members));
+        localStorage.setItem('libraryBooks', JSON.stringify(window.LibraryApp?.getAllBooks?.() ?? []));
+        localStorage.setItem('libraryMembers', JSON.stringify(window.LibraryApp?.members ?? []));
     } catch (error) {
         console.error(error.message);
     }
@@ -243,24 +250,23 @@ function loadFromLocalStorage() {
 
         const bookList = JSON.parse(booksData);
         const memberList = JSON.parse(membersData);
-        window.LibraryApp.resetLibraryState();
-        window.LibraryApp.books.push(...bookList);
-        window.LibraryApp.members.push(...memberList);
-        window.LibraryApp.LibraryStats.updateStats();
-        renderBookCatalogue(window.LibraryApp.getAllBooks());
+        window.LibraryApp?.resetLibraryState?.();
+        window.LibraryApp?.books?.push(...(Array.isArray(bookList) ? bookList : []));
+        window.LibraryApp?.members?.push(...(Array.isArray(memberList) ? memberList : []));
+        window.LibraryApp?.LibraryStats?.updateStats?.();
+        renderBookCatalogue(window.LibraryApp?.getAllBooks?.() ?? []);
         updateStatisticsDisplay();
     } catch (error) {
         console.error(error.message);
     }
 }
 
-// Display function with template issues
 function displayBookDetails(isbn) {
     if (!detailsContainer) {
         return;
     }
 
-    const book = window.LibraryApp.findBookByISBN(isbn);
+    const book = window.LibraryApp?.findBookByISBN?.(isbn ?? '');
     if (!book) {
         detailsContainer.innerHTML = '<div class="details-card"><h2>No selection</h2><p>Select a book to view details.</p></div>';
         return;
@@ -277,24 +283,25 @@ function displayBookDetails(isbn) {
     `;
 }
 
-// Statistics display with errors
 function updateStatisticsDisplay() {
     const totalBooksEl = document.querySelector('.total-books');
     const totalMembersEl = document.querySelector('.total-members');
     const borrowedBooksEl = document.querySelector('.books-borrowed');
 
+    const books = window.LibraryApp?.getAllBooks?.() ?? [];
+    const members = window.LibraryApp?.members ?? [];
+
     if (totalBooksEl) {
-        totalBooksEl.textContent = window.LibraryApp.getAllBooks().length;
+        totalBooksEl.textContent = String(books.length);
     }
     if (totalMembersEl) {
-        totalMembersEl.textContent = window.LibraryApp.members.length;
+        totalMembersEl.textContent = String(members.length);
     }
     if (borrowedBooksEl) {
-        borrowedBooksEl.textContent = window.LibraryApp.getAllBooks().reduce((count, book) => count + book.checkedOut.length, 0);
+        borrowedBooksEl.textContent = String(books.reduce((count, book) => count + (Array.isArray(book.checkedOut) ? book.checkedOut.length : 0), 0));
     }
 }
 
-// Dynamic form generation with errors
 function createMemberForm() {
     if (!memberFormContainer) {
         return;
@@ -336,7 +343,7 @@ function handleMemberFormSubmit(event) {
         return;
     }
 
-    const newMember = window.LibraryApp.registerMember(nameInput.value, emailInput.value, typeInput.value);
+    const newMember = window.LibraryApp?.registerMember?.(nameInput.value, emailInput.value, typeInput.value);
     if (!newMember) {
         showMessage('Please provide a valid name and email.', 'error');
         return;
@@ -406,7 +413,7 @@ function handleAddBookSubmit(event) {
         return;
     }
 
-    const newBook = window.LibraryApp.addBook({
+    const newBook = window.LibraryApp?.addBook?.({
         isbn: isbnInput.value,
         title: titleInput.value,
         author: authorInput.value,
@@ -435,7 +442,7 @@ function renderMemberList() {
     memberListContainer.innerHTML = '';
     const fragment = document.createDocumentFragment();
 
-    window.LibraryApp.members.forEach((member) => {
+    (window.LibraryApp?.members ?? []).forEach((member) => {
         const card = document.createElement('div');
         card.className = 'member-card';
         card.innerHTML = `
@@ -462,7 +469,27 @@ function showMessage(text, variant = 'success') {
     }, 2200);
 }
 
-// Initialize on wrong event
 if (typeof document !== 'undefined') {
-    document.addEventListener('DOMContentLoaded', initializeUI);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeUI);
+    } else {
+        initializeUI();
+    }
+}
+
+if (typeof globalThis !== 'undefined') {
+    globalThis.BOOK_COVER_IMAGES = BOOK_COVER_IMAGES;
+    globalThis.getBookCoverImage = getBookCoverImage;
+    globalThis.initializeUI = initializeUI;
+    globalThis.renderBookCatalogue = renderBookCatalogue;
+    globalThis.handleSearch = handleSearch;
+    globalThis.handleFilterChange = handleFilterChange;
+    globalThis.showMessage = showMessage;
+    globalThis.displayBookDetails = displayBookDetails;
+    globalThis.updateStatisticsDisplay = updateStatisticsDisplay;
+    globalThis.setupEventListeners = setupEventListeners;
+    globalThis.handleBorrowSubmit = handleBorrowSubmit;
+    globalThis.handleBookClick = handleBookClick;
+    globalThis.handleMemberFormSubmit = handleMemberFormSubmit;
+    globalThis.handleAddBookSubmit = handleAddBookSubmit;
 }
