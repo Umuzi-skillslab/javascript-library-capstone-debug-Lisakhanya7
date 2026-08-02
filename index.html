@@ -16,7 +16,7 @@
                 <button id="statistics-tab">Statistics</button>
             </nav>
         </header>
-        
+
         <main>
             <section id="catalogue-section">
                 <div class="controls">
@@ -28,16 +28,16 @@
                         <option value="reference">Reference</option>
                     </select>
                 </div>
-                
+
                 <div id="catalogue-list" class="book-grid">
                     <!-- Books rendered here -->
                 </div>
-                
+
                 <div id="book-details">
                     <!-- Selected book details -->
                 </div>
             </section>
-            
+
             <section id="borrow-section">
                 <h2>Borrow a Book</h2>
                 <form id="borrow-form">
@@ -45,18 +45,22 @@
                     <input type="text" id="isbn" placeholder="ISBN" required>
                     <button type="submit">Borrow Book</button>
                 </form>
+                <div id="status-message" class="message"></div>
             </section>
-            
+
             <section id="member-section" style="display: none;">
                 <h2>Member Management</h2>
                 <div id="member-form">
                     <!-- Member form rendered here -->
                 </div>
-                <div id="member-list">
+                <div id="add-book-form">
+                    <!-- Add-book form rendered here -->
+                </div>
+                <div id="member-list" class="member-grid">
                     <!-- Members list -->
                 </div>
             </section>
-            
+
             <section id="statistics-section" style="display: none;">
                 <h2>Library Statistics</h2>
                 <div class="stats-grid">
@@ -76,10 +80,8 @@
             </section>
         </main>
     </div>
-    
-    <!-- Scripts in wrong order -->
-    <script src="ui.js"></script>
+
     <script src="library.js"></script>
-    <!-- Missing: modules setup -->
+    <script src="ui.js"></script>
 </body>
 </html>
