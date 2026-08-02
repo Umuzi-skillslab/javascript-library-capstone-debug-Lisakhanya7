@@ -1,7 +1,14 @@
-// Jest Tests - Library Management System
-// Incomplete and with errors
+/** @jest-environment jsdom */
 
+// Jest Tests - Library Management System
+const fs = require('fs');
+const path = require('path');
 const library = require('./library.js');
+require('./ui.js');
+
+beforeAll(() => {
+    window.LibraryApp = library;
+});
 
 const {
     Book,
@@ -234,5 +241,53 @@ describe('Late Fee Calculations', () => {
     test('calculateTotalLateFees should use reduce semantics', () => {
         const memberRecord = { overdueBooks: [{ daysLate: 2 }, { daysLate: 4 }] };
         expect(calculateTotalLateFees(memberRecord)).toBe(3);
+    });
+});
+
+describe('UI cover assets', () => {
+    test('should use the actual cover files from the covers directory', () => {
+        const coverDir = path.join(__dirname, 'covers');
+        const files = fs.readdirSync(coverDir)
+            .filter((fileName) => /\.(png|jpe?g|webp)$/i.test(fileName))
+            .sort();
+
+        expect(files.length).toBeGreaterThan(0);
+        expect(globalThis.BOOK_COVER_IMAGES).toBeDefined();
+        expect(globalThis.BOOK_COVER_IMAGES.length).toBe(files.length);
+        expect(globalThis.BOOK_COVER_IMAGES.every((imagePath) => files.includes(imagePath.replace(/^covers\//, '')))).toBe(true);
+    });
+
+    test('should render valid cover image urls for each book card', () => {
+        document.body.innerHTML = `
+            <main>
+                <section id="catalogue-section">
+                    <div id="catalogue-list"></div>
+                    <div id="book-details"></div>
+                </section>
+                <section id="borrow-section">
+                    <form id="borrow-form"></form>
+                </section>
+                <section id="member-section">
+                    <div id="member-form"></div>
+                    <div id="add-book-form"></div>
+                    <div id="member-list"></div>
+                </section>
+                <section id="statistics-section">
+                    <div class="total-books"></div>
+                    <div class="total-members"></div>
+                    <div class="books-borrowed"></div>
+                </section>
+                <input id="search" />
+                <select id="filter-category">
+                    <option value="all">All</option>
+                </select>
+            </main>
+        `;
+
+        initializeUI();
+        const imageNodes = [...document.querySelectorAll('#catalogue-list img')];
+
+        expect(imageNodes.length).toBeGreaterThan(0);
+        expect(imageNodes.every((image) => image.src.includes('/covers/'))).toBe(true);
     });
 });
